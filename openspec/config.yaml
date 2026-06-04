@@ -1,0 +1,70 @@
+project: career-ops-saas
+description: >
+  SaaS multi-tenant platform that lets users connect their Gmail, receive job
+  notifications from Bumeran/LinkedIn/Computrabajo, evaluate offers with AI,
+  generate tailored CVs, and apply via Playwright browser automation with a
+  live preview before submitting.
+artifact_store: openspec
+working_directory: /home/k3n5h1n/Escritorio/career-ops
+initialized_at: "2026-06-03"
+
+# Existing career-ops stack (source for reuse)
+existing_stack:
+  runtime: Node.js ESM (*.mjs)
+  dependencies:
+    - playwright@1.58.1       # PDF gen + scraping — REUSE in worker
+    - js-yaml@4.1.1           # YAML parsing
+    - dotenv@17.0.0
+    - "@google/generative-ai" # Gemini (reference only, using Anthropic)
+  reusable_modules:
+    - providers/greenhouse.mjs
+    - providers/ashby.mjs
+    - providers/lever.mjs
+    - providers/workable.mjs
+    - providers/smartrecruiters.mjs
+    - providers/recruitee.mjs
+    - providers/local-parser.mjs
+    - generate-pdf.mjs
+    - scan.mjs
+    - liveness-core.mjs
+
+# Planned SaaS stack
+planned_stack:
+  api:
+    language: Go
+    router: chi
+    protocol: REST + WebSocket (gorilla/websocket)
+  worker:
+    language: Node.js (Express)
+    purpose: Playwright scraping, PDF generation, Gmail parsing
+    reuses: existing career-ops providers/*.mjs and generate-pdf.mjs
+  database:
+    engine: PostgreSQL
+    query_layer: sqlc
+  storage: Cloudflare R2
+  ai: Anthropic API (claude-sonnet-4-6) with prompt caching
+  auth: Google OAuth2 + JWT
+  email: Gmail API + Google Pub/Sub push notifications
+  billing: Stripe subscriptions + usage metering
+  frontend: Next.js + shadcn/ui
+
+testing:
+  strict_tdd: false
+  reason: New project, no test runner configured yet
+  existing_checks:
+    - test-all.mjs (63+ pipeline integrity checks in career-ops)
+  planned_runners:
+    - go test ./... (Go API)
+    - vitest or jest (Node.js worker)
+    - playwright/test (e2e)
+
+conventions:
+  commits: conventional commits (no AI attribution)
+  branches: trunk-based (short-lived, direct to main)
+  api_style: REST/JSON, no gRPC for browser-facing endpoints
+  error_handling: explicit Go error returns, no panics in handlers
+  multi_tenancy: row-level (user_id on every table + Postgres RLS)
+
+delivery:
+  strategy: ask-on-risk
+  execution_mode: interactive
